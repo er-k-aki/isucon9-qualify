@@ -61,10 +61,11 @@ const (
 )
 
 var (
-	templates *template.Template
-	dbx       *sqlx.DB
-	store     sessions.Store
+	templates    *template.Template
+	dbx          *sqlx.DB
+	store        sessions.Store
 	categoryList = make(map[int]*Category)
+	configList   = make(map[string]*Config)
 )
 
 type Config struct {
@@ -423,16 +424,16 @@ func getCategoryByID(q sqlx.Queryer, categoryID int) (category Category, err err
 }
 
 func getConfigByName(name string) (string, error) {
-	config := Config{}
-	err := dbx.Get(&config, "SELECT * FROM `configs` WHERE `name` = ?", name)
-	if err == sql.ErrNoRows {
-		return "", nil
-	}
-	if err != nil {
-		log.Print(err)
-		return "", err
-	}
-	return config.Val, err
+	//config := Config{}
+	//err := dbx.Get(&config, "SELECT * FROM `configs` WHERE `name` = ?", name)
+	//if err == sql.ErrNoRows {
+	//	return "", nil
+	//}
+	//if err != nil {
+	//	log.Print(err)
+	//	return "", err
+	//}
+	return configList[name].Val, nil
 }
 
 func getPaymentServiceURL() string {
@@ -510,6 +511,18 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		if cate.ParentID != 0 {
 			cate.ParentCategoryName = categoryList[cate.ParentID].CategoryName
 		}
+	}
+
+	confArr := []*Config{}
+	err = dbx.Select(&confArr, "SELECT * FROM configs")
+	if err != nil {
+		log.Print(err)
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
+
+	for _, conf := range confArr {
+		configList[conf.Name] = conf
 	}
 
 	res := resInitialize{
