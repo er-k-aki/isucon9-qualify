@@ -279,10 +279,11 @@ func init() {
 }
 
 func main() {
-	host := os.Getenv("MYSQL_HOST")
-	if host == "" {
-		host = "127.0.0.1"
-	}
+	//host := os.Getenv("MYSQL_HOST")
+	//if host == "" {
+	//	host = "127.0.0.1"
+	//}
+	host := "192.168.33.12"
 	port := os.Getenv("MYSQL_PORT")
 	if port == "" {
 		port = "3306"
