@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -66,6 +67,8 @@ var (
 	store        sessions.Store
 	categoryList = make(map[int]*Category)
 	configList   = make(map[string]*Config)
+	userMap = make(map[int64]*User)
+	userMapMux = sync.RWMutex{}
 )
 
 type Config struct {
@@ -282,11 +285,11 @@ func init() {
 }
 
 func main() {
-	host := os.Getenv("MYSQL_HOST")
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	// host := "192.168.33.12"
+	//host := os.Getenv("MYSQL_HOST")
+	//if host == "" {
+	//	host = "127.0.0.1"
+	//}
+	host := "192.168.33.12"
 	port := os.Getenv("MYSQL_PORT")
 	if port == "" {
 		port = "3306"
