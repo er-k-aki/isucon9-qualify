@@ -1,3 +1,4 @@
+// これでgit管理できているか
 package main
 
 import (
