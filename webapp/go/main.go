@@ -390,6 +390,11 @@ func getUser(r *http.Request) (user User, errCode int, errMsg string) {
 	if !ok {
 		return user, http.StatusNotFound, "no session"
 	}
+	userMapMux.RLock()
+	if val, ok := userMap[userID.(int64)]; ok {
+		userMapMux.RUnlock()
+		return *val, http.StatusOK, ""
+	}
 
 	err := dbx.Get(&user, "SELECT * FROM `users` WHERE `id` = ?", userID)
 	if err == sql.ErrNoRows {
@@ -399,6 +404,9 @@ func getUser(r *http.Request) (user User, errCode int, errMsg string) {
 		log.Print(err)
 		return user, http.StatusInternalServerError, "db error"
 	}
+	userMapMux.Lock()
+	defer userMapMux.Unlock()
+	userMap[userID.(int64)] = &user
 
 	return user, http.StatusOK, ""
 }
@@ -1118,7 +1126,6 @@ ORDER BY created_at DESC, items.id DESC LIMIT ?`,
 		}
 		itemDetails = append(itemDetails, itemDetail)
 	}
-
 
 	hasNext := false
 	if len(itemDetails) > TransactionsPerPage {
