@@ -407,7 +407,7 @@ func getUserSimpleByID(q sqlx.Queryer, userID int64) (userSimple UserSimple, err
 	user := User{}
 	userMapMux.RLock()
 	val, ok := userMap[userID]
-	if !ok {
+	if ok {
 		userSimple.ID = val.ID
 		userSimple.AccountName = val.AccountName
 		userSimple.NumSellItems = val.NumSellItems
