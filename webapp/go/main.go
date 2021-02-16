@@ -1157,8 +1157,37 @@ func getItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item := Item{}
-	err = dbx.Get(&item, "SELECT * FROM `items` WHERE `id` = ?", itemID)
+	query := `
+SELECT 
+i.id,
+i.name,
+i.seller_id, 
+i.buyer_id,
+i.status,
+i.name,
+i.price,
+i.description,
+i.image_name,
+i.category_id,
+te.id,
+te.status,
+te.ship_status
+FROM items i
+LEFT JOIN 
+(
+SELECT te2.id AS id, 
+te2.item_id AS item_id,
+te2.status AS status,
+s.status AS ship_status
+FROM transaction_evidences AS te2 
+INNER JOIN shippings AS s 
+ON s.transaction_evidence_id = te2.id
+WHERE te2.item_id = ?
+) AS te
+ON te.item_id = i.id 
+WHERE i.id =  ? 
+`
+	rows, err := dbx.Queryx(query, itemID, itemID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "item not found")
 		return
@@ -1168,75 +1197,99 @@ func getItem(w http.ResponseWriter, r *http.Request) {
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
+	item := Item{}
+	var itemDetail = ItemDetail{}
+	for rows.Next() {
+		teID := sql.NullInt64{}
+		teStatus := sql.NullString{}
+		sStatus := sql.NullString{}
+		rows.Scan(
+			&item.ID,
+			&item.Name,
+			&item.SellerID,
+			&item.BuyerID,
+			&item.Status,
+			&item.Price,
+			&item.Description,
+			&item.ImageName,
+			&item.CategoryID,
+			&teID,
+			&teStatus,
+			&sStatus,
+		)
+		//err = dbx.Get(&item, "SELECT * FROM `items` WHERE `id` = ?", itemID)
 
-	category, err := getCategoryByID(dbx, item.CategoryID)
-	if err != nil {
-		outputErrorMsg(w, http.StatusNotFound, "category not found")
-		return
-	}
-
-	seller, err := getUserSimpleByID(dbx, item.SellerID)
-	if err != nil {
-		outputErrorMsg(w, http.StatusNotFound, "seller not found")
-		return
-	}
-
-	itemDetail := ItemDetail{
-		ID:       item.ID,
-		SellerID: item.SellerID,
-		Seller:   &seller,
-		// BuyerID
-		// Buyer
-		Status:      item.Status,
-		Name:        item.Name,
-		Price:       item.Price,
-		Description: item.Description,
-		ImageURL:    getImageURL(item.ImageName),
-		CategoryID:  item.CategoryID,
-		// TransactionEvidenceID
-		// TransactionEvidenceStatus
-		// ShippingStatus
-		Category:  &category,
-		CreatedAt: item.CreatedAt.Unix(),
-	}
-
-	if (user.ID == item.SellerID || user.ID == item.BuyerID) && item.BuyerID != 0 {
-		buyer, err := getUserSimpleByID(dbx, item.BuyerID)
+		category, err := getCategoryByID(dbx, item.CategoryID)
 		if err != nil {
-			outputErrorMsg(w, http.StatusNotFound, "buyer not found")
-			return
-		}
-		itemDetail.BuyerID = item.BuyerID
-		itemDetail.Buyer = &buyer
-
-		transactionEvidence := TransactionEvidence{}
-		err = dbx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", item.ID)
-		if err != nil && err != sql.ErrNoRows {
-			// It's able to ignore ErrNoRows
-			log.Print(err)
-			outputErrorMsg(w, http.StatusInternalServerError, "db error")
+			outputErrorMsg(w, http.StatusNotFound, "category not found")
 			return
 		}
 
-		if transactionEvidence.ID > 0 {
-			shipping := Shipping{}
-			err = dbx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ?", transactionEvidence.ID)
-			if err == sql.ErrNoRows {
-				outputErrorMsg(w, http.StatusNotFound, "shipping not found")
-				return
-			}
+		seller, err := getUserSimpleByID(dbx, item.SellerID)
+		if err != nil {
+			outputErrorMsg(w, http.StatusNotFound, "seller not found")
+			return
+		}
+
+		itemDetail = ItemDetail{
+			ID:       item.ID,
+			SellerID: item.SellerID,
+			Seller:   &seller,
+			// BuyerID
+			// Buyer
+			Status:      item.Status,
+			Name:        item.Name,
+			Price:       item.Price,
+			Description: item.Description,
+			ImageURL:    getImageURL(item.ImageName),
+			CategoryID:  item.CategoryID,
+			// TransactionEvidenceID
+			// TransactionEvidenceStatus
+			// ShippingStatus
+			Category:  &category,
+			CreatedAt: item.CreatedAt.Unix(),
+		}
+
+		if (user.ID == item.SellerID || user.ID == item.BuyerID) && item.BuyerID != 0 {
+			buyer, err := getUserSimpleByID(dbx, item.BuyerID)
 			if err != nil {
-				log.Print(err)
-				outputErrorMsg(w, http.StatusInternalServerError, "db error")
+				outputErrorMsg(w, http.StatusNotFound, "buyer not found")
 				return
 			}
+			itemDetail.BuyerID = item.BuyerID
+			itemDetail.Buyer = &buyer
 
-			itemDetail.TransactionEvidenceID = transactionEvidence.ID
-			itemDetail.TransactionEvidenceStatus = transactionEvidence.Status
-			itemDetail.ShippingStatus = shipping.Status
+			//transactionEvidence := TransactionEvidence{}
+			//	err = dbx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", item.ID)
+			//	if err != nil && err != sql.ErrNoRows {
+			//		// It's able to ignore ErrNoRows
+			//		log.Print(err)
+			//		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+			//		return
+			//	}
+			//
+			//	if transactionEvidence.ID > 0 {
+			//shipping := Shipping{}
+			//		err = dbx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ?", transactionEvidence.ID)
+			//		if err == sql.ErrNoRows {
+			//			outputErrorMsg(w, http.StatusNotFound, "shipping not found")
+			//			return
+			//		}
+			//		if err != nil {
+			//			log.Print(err)
+			//			outputErrorMsg(w, http.StatusInternalServerError, "db error")
+			//			return
+			//		}
+			//
+		}
+		if teID.Valid {
+			itemDetail.TransactionEvidenceID = teID.Int64
+			itemDetail.TransactionEvidenceStatus = teStatus.String
+			if teID.Int64 > 0 {
+				itemDetail.ShippingStatus = sStatus.String
+			}
 		}
 	}
-
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(itemDetail)
 }
