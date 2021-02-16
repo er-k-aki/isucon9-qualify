@@ -14,7 +14,8 @@ CREATE TABLE `users` (
   `address` varchar(191) NOT NULL,
   `num_sell_items` int unsigned NOT NULL DEFAULT 0,
   `last_bump` datetime NOT NULL DEFAULT '2000-01-01 00:00:00',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `reserve_id` bigint AS (-id) NOT NULL,
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4;
 
 DROP TABLE IF EXISTS `items`;
@@ -33,7 +34,8 @@ CREATE TABLE `items` (
   INDEX idx_category_id (`category_id`),
   INDEX idx_seller_id (`seller_id`),
   INDEX idx_buyer_id (`buyer_id`),
-  INDEX idx_created_at (`created_at`)
+  INDEX idx_created_at (`created_at`),
+  INDEX idx_reverse_created_at_and_reverse_id(`created_at` DESC, `id` DESC)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4;
 
 DROP TABLE IF EXISTS `transaction_evidences`;
